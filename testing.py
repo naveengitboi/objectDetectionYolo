@@ -1,54 +1,57 @@
 from ultralytics import YOLO
+from ultralytics.solutions import object_counter
 import os
 import cv2 as cv
 import serial
+import cvzone
+import math
 
 
 url = "http://192.168.44.117:8080/video"
-
-# camera testing and it turned out to be port 1 for webcam
-# for i in range(1,7):
-#     cap = cv.VideoCapture(i)
-#     ret, frame = cap.read()
-#     if not ret:
-#         print("Failed to capture frame", i)
-#     else:
-#         print("Captured frame", i)
-#         while True:
-#             ret, frame = cap.read()
-#             cv.imshow("frame", frame)
-#             if cv.waitKey(1) & 0xFF == ord('q'):
-#                 break
-
+PORT = "COM8"
+BRate = 115200
+MINSPEED = 0.5
+MAXSPEED = 3.0
 
 
 cap = cv.VideoCapture(1)
+cap.set(cv.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1080)
+# tracking and counting objects
+
+
 modelPath = "runs/detect/train3/weights/best.pt"
+
 model = YOLO(modelPath)
+
+counter = object_counter.ObjectCounter()
+coords = [topLeft,topRight, bottomRight, bottomLeft] = [(0,0), (1920,0), (1920,1080), (0,1080)]
+regionPoints = coords
+# counter.set_args(view_img = True, reg_pts = regionPoints, class_names = model.names, draw_tracks=True)
 
 # linear interpolation
 def lerp(A, B , t):
     return (B-A)*t + A
 
-PORT = "COM8"
-BRate = 115200
-MINSPEED = 0.5
-MAXSPEED = 3.0
+
 def communicateWithArduino(seed):
     arduino = serial.Serial(port=PORT, baudrate=BRate, timeout=0.1)
     speed = lerp(MINSPEED, MAXSPEED, seed)
     print("Speed ",speed)
     arduino.write(bytes(speed, 'utf-8'))
 
+classNames = ['typeOne', 'typeTwo', 'typeThree', 'typeFour']
+
+
 
 while True:
-    ret, frame = cap.read()
+    ret, img = cap.read()
     if not ret:
         print("Not connected")
         continue
     if ret:
-        frame = cv.flip(frame, 1)
-        frame = cv.resize(frame, (640, 480))
+        img = cv.flip(img, 1)
+        frame = img
         coloredFrame = frame
 
         # gray color
@@ -56,25 +59,34 @@ while True:
 
         # threshold Color
         threshFrame = cv.threshold(grayFrame, 60, 255, cv.THRESH_BINARY)[1]
-        results = model.predict(source=frame, show=True, conf=0.05)
-        cv.imshow( "Threshold Frame", threshFrame)
-        cv.imshow( "Gray Frame", grayFrame)
-        # cv.imshow("Colored Frame", coloredFrame)
 
-        totalArea = 0
+        results = model.predict(source=frame,stream=True, conf=0.05)
         for result in results:
-            # print(result)
-            for box in result.boxes:
-                [x1, y1, x2, y2] = box.xyxy[0]
-
+            boxes = result.boxes
+            for box in boxes:
+                x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                print("sizes ",[x1, y1, x2, y2])
-                w = y2-y1
-                h = x2-x1
-                totalArea += w*h
-            print(result)
-        # print(totalArea)
+                color = (255,0,255)
+                boundingBox = (x1, y1, x2-x1, y2-y1)
+                cvzone.cornerRect(frame, boundingBox, cv.LINE_AA)
+
+                confidence = math.ceil((box.conf[0]*100))/100
+                positionOfText = (max(0, x1), max(35,y1))
 
 
+                cls = int(box.cls[0])
+                print(cls)
+                cvzone.putTextRect(frame, f'{classNames[cls]} {confidence}', positionOfText, scale=1.5, thickness=1)
+
+
+
+        cv.imshow("Results", frame)
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
+
+
+
+
+
+
+
