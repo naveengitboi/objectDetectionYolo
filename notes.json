@@ -1,0 +1,33 @@
+{
+  "categories": [
+    {
+      "id": 0,
+      "name": "type1"
+    },
+    {
+      "id": 1,
+      "name": "type2"
+    },
+    {
+      "id": 2,
+      "name": "type3"
+    },
+    {
+      "id": 3,
+      "name": "type4"
+    },
+    {
+      "id": 4,
+      "name": "type5"
+    },
+    {
+      "id": 5,
+      "name": "type6"
+    }
+  ],
+  "info": {
+    "year": 2025,
+    "version": "1.0",
+    "contributor": "Label Studio"
+  }
+}
