@@ -31,7 +31,7 @@ tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
 
 lx, ly, rx, ry = [450,152,600,152]
 lineCoords = [lx, ly, rx, ry]
-totalObjCounts = 0
+totalObjCounts = []
 
 # linear interpolation
 def lerp(A, B , t):
@@ -72,22 +72,26 @@ while True:
             x1, y1, x2, y2 = box.xyxy[0]
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
             color = (255,0,255)
-            boundingBox = (x1, y1, x2-x1, y2-y1)
+            width, height = x2-x1, y2-y1
+            boundingBox = (x1, y1, width, height)
             cvzone.cornerRect(frame, boundingBox, cv.LINE_AA)
 
             confidence = math.ceil((box.conf[0]*100))/100
             positionOfText = (max(0, x1), max(35,y1))
+            posOfAreaText = (max(0, x2), max(35, y2))
 
-
+            area = int(width*height)
             cls = int(box.cls[0])
             cvzone.putTextRect(frame, f'{classNames[cls]} {confidence}', positionOfText,
-                               scale=1.5, thickness=1, offset=5)
+                               scale=2, thickness=1, offset=5)
             currentArray = np.array([x1,y1,x2,y2, confidence])
+            cvzone.putTextRect(frame, f'{area}',posOfAreaText, scale=2, thickness=1, offset=5)
             detections = np.vstack([detections, currentArray])
 
 
     trackerResults = tracker.update(detections)
-    cv.line(frame, (lineCoords[0], lineCoords[1]), (lineCoords[2], lineCoords[3]), (0,0,255), 2)
+    cv.line(frame, (lineCoords[0], lineCoords[1]), (lineCoords[2], lineCoords[3]),
+            (0,0,255), 2)
     for tResult in trackerResults:
         x1, y1, x2, y2, id = tResult
         x1, y1, x2, y2, id = int(x1), int(y1), int(x2), int(y2), int(id)
@@ -97,9 +101,13 @@ while True:
         cx, cy = x1 + w//2 , y1+ h//2
 
         if lineCoords[0] < cx < lineCoords[2] and lineCoords[1] - 20 < cy < lineCoords[3] + 20:
-            totalObjCounts += 1
+            if id not in totalObjCounts:
+                totalObjCounts.append(id)
 
-    cvzone.putTextRect(frame, f'#of {totalObjCounts}',(50,50))
+    #object counts croseed that line
+    countedObjects = len(totalObjCounts)
+
+    # cvzone.putTextRect(frame, f'#of {countedObjects}',(50,50))
 
     cv.imshow("Results", frame)
     if cv.waitKey(1) & 0xFF == ord('q'):
