@@ -1,20 +1,19 @@
 import cv2 as cv
 import numpy as np
 
-def getContours(img, cThr=[80,150], showCanny=False, MINAREA=1000, filter=0, draw=False):
+def getContours(img, cThr=[80,150], showCanny=False, MINAREA=500, filter=0, draw=False):
     imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     # cv.imshow("Canny Img", imgGray)
     imgBlur = cv.GaussianBlur(imgGray, (5, 5), 1)
     # cv.imshow("Blur Img", imgBlur)
     imgCanny = cv.Canny(imgBlur, cThr[0], cThr[1])
     # cv.imshow("Canny Canny", imgCanny)
-    kernal = np.ones((5,5))
-    imgDial = cv.dilate(imgCanny, kernal, iterations=3)
-    imgThreshold = cv.erode(imgDial, kernal, iterations=2)
+    imgThreshold = imgCanny.copy()
     if showCanny:
         cv.imshow("Canny Img", imgThreshold)
 
     contours, hiearchy = cv.findContours(imgThreshold, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
     finalContours = []
     for i in contours:
         area = cv.contourArea(i)
@@ -48,13 +47,14 @@ def reorder(myPoints):
     return myPointsNew
 
 
-def warpImage(img, points, w, h, pad = 20):
-    print("Points in warpFunc ",points)
-    print("Points in warpFunc ", points.shape)
+def warpImage(img, points, w, h, pad = 3):
+    # print("Points in warpFunc ",points)
+    # print("Points in warpFunc ", points.shape)
     points = reorder(points)
     pts1 = np.float32(points)
     pts2 = np.float32([[0,0], [w,0], [0,h], [w,h]])
     matrix = cv.getPerspectiveTransform(pts1, pts2)
+    print("Matrix ", matrix)
     imgWarp = cv.warpPerspective(img, matrix, (w, h))
     imgWarp = imgWarp[pad:imgWarp.shape[0] - pad, pad:imgWarp.shape[1] - pad]
     return imgWarp
