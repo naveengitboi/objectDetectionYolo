@@ -29,3 +29,20 @@
 #
 #         print("T Area one", totalArea)
 #         print("T Area two",tAreaRead)
+
+
+import serial, time
+
+
+connect = serial.Serial("COM5", 9600)
+time.sleep(2)
+
+
+while True:
+    i = 800
+    cmd = f'{i}\n'
+    connect.write(cmd.encode('utf-8'))
+
+    print(type(cmd.encode('utf-8')))
+    connect.reset_input_buffer()
+    # time.sleep(0.1)  # Add a delay of 100ms

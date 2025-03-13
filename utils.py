@@ -54,7 +54,7 @@ def warpImage(img, points, w, h, pad = 3):
     pts1 = np.float32(points)
     pts2 = np.float32([[0,0], [w,0], [0,h], [w,h]])
     matrix = cv.getPerspectiveTransform(pts1, pts2)
-    print("Matrix ", matrix)
+    # print("Matrix ", matrix)
     imgWarp = cv.warpPerspective(img, matrix, (w, h))
     imgWarp = imgWarp[pad:imgWarp.shape[0] - pad, pad:imgWarp.shape[1] - pad]
     return imgWarp

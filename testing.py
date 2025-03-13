@@ -1,19 +1,18 @@
 from ultralytics import YOLO
 from ultralytics.solutions import object_counter
-import os
+import os, time
 import cv2 as cv
 import cvzone
 import math
 from sort import *
 import utils
 import serial
-import time
 
 url = "http://192.168.44.117:8080/video"
-PORT = "COM8"
+PORT = "COM5"
 BRate = 115200
 MIN_SPEED = 100  # Minimum motor speed (steps per second)
-MAX_SPEED = 1000  # Maximum motor speed (steps per second)
+MAX_SPEED = 800  # Maximum motor speed (steps per second)
 MAX_COUNT = 100  # Maximum expected object count
 MAX_AREA = 1000  # Maximum expected total area of objects
 WEIGHT_COUNT = 0.4  # Weight for object count in the calculation
@@ -28,9 +27,11 @@ cap = cv.VideoCapture(1)
 cap.set(cv.CAP_PROP_FRAME_WIDTH, 1920)
 cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1080)
 
-
+#best.pt model of yolov8n (nano)
 modelPath = "runs/detect/train3/weights/best.pt"
 model = YOLO(modelPath)
+
+currentDirecotry = os.getcwd()
 
 counter = object_counter.ObjectCounter()
 coords = [topLeft,topRight, bottomRight, bottomLeft] = [(0,0), (1920,0), (1920,1080), (0,1080)]
@@ -43,7 +44,7 @@ lineCoords = [lx, ly, rx, ry]
 totalObjCounts = []
 
 # conveyor coordenates
-cx1, cy1, cx2, cy2 =[300, 0, 900, 500]
+cx1, cy1, cx2, cy2 =[0, 0, 1920, 1080]
 
 
 
@@ -53,19 +54,19 @@ def liesInsideTheBox(x1, y1, x2, y2,cx1, cy1, cx2, cy2):
          return True
      return False
 
-# linear interpolation
-def lerp(A, B , t):
-    return (B-A)*t + A
-
+# linear interpolation for speed
+def lerp(minSpeed, maxSpeed , speedFactor):
+    return (maxSpeed-minSpeed)*speedFactor + minSpeed
 
 classNames = ['typeOne', 'typeTwo', 'typeThree', 'typeFour']
 
 
 
 # Establish serial communication with Arduino
-arduino = serial.Serial(port=PORT, baudrate=BRate, timeout=0.1)
+connect = serial.Serial("COM5", 9600)
 time.sleep(2)
 
+previousSpeed = 300
 def calculate_speed(object_count, total_area):
     # Normalize the inputs
     normalized_count = object_count / MAX_COUNT
@@ -80,9 +81,14 @@ def calculate_speed(object_count, total_area):
 
 def send_speed_to_arduino(speed):
     # Send the calculated speed to Arduino
-    arduino.write(bytes(speed, 'utf-8'))
-    print(f"Sent speed: {speed}")
+    cmd = f"{speed}\n"
+    connect.write(cmd.encode('utf-8'))
 
+
+def getRangeSpeedOfMotor(speed):
+    lowVal = speed//100
+    midVal = lowVal*100 + (lowVal+1)*10
+    return midVal
 
 while True:
     ret, img = cap.read()
@@ -169,11 +175,20 @@ while True:
             if id not in totalObjCounts:
                 totalObjCounts.append(id)
 
-    #object counts croseed that line
+    #object counts crosed that line
     countedObjects = len(totalObjCounts)
     speedOfMotor = calculate_speed(countedObjects, totalArea)
-    send_speed_to_arduino(speedOfMotor)
-    cvzone.putTextRect(frame, f'#of {countedObjects}',(50,50))
+    if speedOfMotor:
+        rangedSpeed = getRangeSpeedOfMotor(speedOfMotor)
+        cmd = f"{800}\n"
+        connect.write(cmd.encode('utf-8'))
+        # send_speed_to_arduino(900)
+        print("Speed of Motor executed",rangedSpeed)
+    else:
+        # send_speed_to_arduino(300)
+        cmd = f"{9005}\n"
+        connect.write(cmd.encode('utf-8'))
+    cvzone.putTextRect(frame, f'#of {countedObjects}',(350,50), scale=1)
 
     cv.imshow("Results", frame)
     if cv.waitKey(1) & 0xFF == ord('q'):
