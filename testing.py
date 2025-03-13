@@ -18,6 +18,7 @@ MAX_AREA = 1000  # Maximum expected total area of objects
 WEIGHT_COUNT = 0.4  # Weight for object count in the calculation
 WEIGHT_AREA = 0.6  # Weight for area in the calculation
 
+sFactor = 1
 
 scaleFactor = 2
 WidthOfConveyor = 1080
@@ -79,10 +80,14 @@ def calculate_speed(object_count, total_area):
     speed = lerp(MIN_SPEED, MAX_SPEED, factor)
     return int(speed)
 
-def send_speed_to_arduino(speed):
-    # Send the calculated speed to Arduino
-    cmd = f"{speed}\n"
-    connect.write(cmd.encode('utf-8'))
+def sendSpeedToMotor(speed):
+    strSpeed = str(speed)
+    connect.write(strSpeed.encode('utf-8'))
+    print(f"Sent to Arduino: {strSpeed}")
+    # # Read the response from Arduino
+    # if connect.in_waiting > 0:  # Check if there is data available to read
+    #     val = connect.readline().decode('utf-8').strip()  # Read a complete line
+    #     print(f"Value from Arduino: {val}")
 
 
 def getRangeSpeedOfMotor(speed):
@@ -98,33 +103,8 @@ while True:
     img = cv.flip(img, 1)
     frame = img
 
-    results = model.predict(source=frame,stream=True, conf=0.05)
+    results = model.predict(source=frame,stream=True, conf=0.01)
 
-    img, contours = utils.getContours(frame, draw=False, filter=4, cThr=[100,150])
-    if len(contours) != 0:
-        biggest = contours[0][2]
-        # print("biggest shape",biggest)
-        imgWarp = utils.warpImage(img, biggest, WidthOfConveyor, LengthOfConveyor)
-        imgContours2, conts2 = utils.getContours(imgWarp, draw=False, filter=4, cThr=[100,150])
-
-        if len(conts2) != 0:
-            for obj in conts2:
-                cv.polylines(imgContours2,[obj[2]],True,(0,255,0),2)
-                nPoints = utils.reorder(obj[2])
-                newWidth = round(utils.findDis(nPoints[0][0]//scaleFactor, nPoints[1][0]//scaleFactor)/10,1)
-                newHeight = round(utils.findDis(nPoints[0][0] // scaleFactor, nPoints[1][0] // scaleFactor)/10,1)
-                cv.arrowedLine(imgContours2, (nPoints[0][0][0], nPoints[0][0][1]),
-                                (nPoints[1][0][0], nPoints[1][0][1]),
-                                (255, 0, 255), 3, 8, 0, 0.05)
-                cv.arrowedLine(imgContours2, (nPoints[0][0][0], nPoints[0][0][1]),
-                                (nPoints[2][0][0], nPoints[2][0][1]),
-                                (255, 0, 255), 3, 8, 0, 0.05)
-                x, y, w, h = obj[3]
-                cv.putText(imgContours2, '{}cm'.format(newWidth), (x + 30, y - 10), cv.FONT_HERSHEY_COMPLEX_SMALL, 1.5,
-                            (255, 0, 255), 2)
-                cv.putText(imgContours2, '{}cm'.format(newHeight), (x - 70, y + h // 2), cv.FONT_HERSHEY_COMPLEX_SMALL, 1.5,
-                            (255, 0, 255), 2)
-        # cv.imshow('imgWarp', imgContours2)
     totalArea = 0
 
     detections = np.empty((0,5))
@@ -178,16 +158,13 @@ while True:
     #object counts crosed that line
     countedObjects = len(totalObjCounts)
     speedOfMotor = calculate_speed(countedObjects, totalArea)
+
     if speedOfMotor:
         rangedSpeed = getRangeSpeedOfMotor(speedOfMotor)
-        cmd = f"{800}\n"
-        connect.write(cmd.encode('utf-8'))
-        # send_speed_to_arduino(900)
-        print("Speed of Motor executed",rangedSpeed)
+        sendSpeedToMotor(rangedSpeed*sFactor)
     else:
-        # send_speed_to_arduino(300)
-        cmd = f"{9005}\n"
-        connect.write(cmd.encode('utf-8'))
+        sendSpeedToMotor(500)
+
     cvzone.putTextRect(frame, f'#of {countedObjects}',(350,50), scale=1)
 
     cv.imshow("Results", frame)
