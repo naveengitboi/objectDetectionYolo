@@ -6,7 +6,7 @@ import serial
 import cvzone
 import math
 from sort import *
-
+import utils
 
 url = "http://192.168.44.117:8080/video"
 PORT = "COM8"
@@ -14,6 +14,9 @@ BRate = 115200
 MINSPEED = 0.5
 MAXSPEED = 3.0
 
+scaleFactor = 2
+WidthOfConveyor = 150*scaleFactor
+LengthOfConveyor = 300*scaleFactor
 
 cap = cv.VideoCapture(1)
 cap.set(cv.CAP_PROP_FRAME_WIDTH, 1920)
@@ -64,6 +67,32 @@ while True:
     threshFrame = cv.threshold(grayFrame, 60, 255, cv.THRESH_BINARY)[1]
 
     results = model.predict(source=frame,stream=True, conf=0.05)
+
+    img, contours = utils.getContours(frame, showCanny=True, draw=False, filter=4, cThr=[50,50])
+    if len(contours) != 0:
+        biggest = contours[0][2]
+        print("biggest shape",biggest)
+        imgWarp = utils.warpImage(img, biggest, WidthOfConveyor, LengthOfConveyor)
+        imgContours2, conts2 = utils.getContours(imgWarp, showCanny=True, draw=False, filter=4, cThr=[50,50])
+
+        if len(conts2) != 0:
+            for obj in conts2:
+                cv.polylines(imgContours2, [obj], True, (0,255,255),2)
+                nPoints = utils.reorder(obj[2])
+                newWidth = round(utils.findDis(nPoints[0][0]//scaleFactor, nPoints[1][0]//scaleFactor)/10,1)
+                newHeight = round(utils.findDis(nPoints[0][0] // scaleFactor, nPoints[1][0] // scaleFactor)/10,1)
+                cv.arrowedLine(imgContours2, (nPoints[0][0][0], nPoints[0][0][1]),
+                                (nPoints[1][0][0], nPoints[1][0][1]),
+                                (255, 0, 255), 3, 8, 0, 0.05)
+                cv.arrowedLine(imgContours2, (nPoints[0][0][0], nPoints[0][0][1]),
+                                (nPoints[2][0][0], nPoints[2][0][1]),
+                                (255, 0, 255), 3, 8, 0, 0.05)
+                x, y, w, h = obj[3]
+                cv.putText(imgContours2, '{}cm'.format(nW), (x + 30, y - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.5,
+                            (255, 0, 255), 2)
+                cv.putText(imgContours2, '{}cm'.format(nH), (x - 70, y + h // 2), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.5,
+                            (255, 0, 255), 2)
+        cv.imshow('imgWarp', imgContours2)
 
     detections = np.empty((0,5))
     for result in results:
