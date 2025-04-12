@@ -1,33 +1,51 @@
 import serial
 import time
 
-# Initialize the serial connection
-arduino = serial.Serial("COM5", 115200)
-time.sleep(3)  # Give the Arduino time to initialize
 
-dummy = "251"
+class StepperMotorController:
+    def __init__(self, port, baudrate=9600):
+        self.ser = serial.Serial(port, baudrate, timeout=1)
+        time.sleep(2)  # Wait for Arduino to initialize
+        self._read_serial()  # Clear any initial messages
 
-try:
-    while True:
-        # Send data to Arduino
-        arduino.write(dummy.encode('utf-8'))
-        print(f"Sent to Arduino: {dummy}")
+    def _read_serial(self):
+        while self.ser.in_waiting > 0:
+            print(self.ser.readline().decode('utf-8').strip())
 
-        # Wait for the Arduino to process the data and send a response
+    def set_speed(self, speed):
+        """Set motor speed in steps per second"""
+        self.ser.write(f"{speed}\n".encode('utf-8'))
         time.sleep(0.1)
+        self._read_serial()
 
-        # Read the response from Arduino
-        if arduino.in_waiting > 0:  # Check if there is data available to read
-            val = arduino.readline().decode('utf-8').strip()  # Read a complete line
-            print(f"Value from Arduino: {val}")
+    def close(self):
+        self.ser.close()
 
-        # Optional: Add a delay before the next iteration
-        time.sleep(1)
 
-except KeyboardInterrupt:
-    print("Program terminated by user")
+if __name__ == "__main__":
+    # Example usage
+    PORT = 'COM5'  # Change this to your Arduino's port (e.g., '/dev/ttyUSB0' on Linux)
+    controller = StepperMotorController(PORT)
+    try:
+        print("Stepper Motor Control")
+        print("Enter speed values (positive/negative integers). Type 'quit' to exit.")
 
-finally:
-    # Close the serial connection
-    arduino.close()
-    print("Serial connection closed")
+        while True:
+            user_input = input("Enter speed (steps/sec): ")
+
+            if user_input.lower() == 'quit':
+                break
+
+            try:
+                speed = int(user_input)
+                controller.set_speed(speed)
+            except ValueError:
+                print("Please enter a valid integer or 'quit'")
+
+    except serial.SerialException as e:
+        print(f"Serial communication error: {e}")
+    except KeyboardInterrupt:
+        print("\nProgram terminated by user")
+    finally:
+        controller.close()
+        print("Connection closed")

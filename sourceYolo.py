@@ -1,10 +1,15 @@
-import serial
-import time
+import os
 
+folderName = "C:/Users/Nandini/OneDrive/Desktop/artworks"
+print(os.getcwd())
+os.chdir(folderName)
 
-connect = serial.Serial("COM5", 115200)
-time.sleep(2)
-
-while True:
-    val = connect.readline().decode('utf-8')
-    print(val)
+print(os.getcwd())
+def renamingFiles():
+    cnt = 0
+    for item in os.listdir():
+        name = os.path.join(folderName,item)
+        newfileName = str(cnt) + ".jpg"
+        if os.path.isfile(name):
+            os.rename(item, newfileName)
+            cnt+=1

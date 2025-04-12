@@ -6,11 +6,12 @@ import cvzone
 import math
 from sort import *
 import utils
-import serial
+from arduinoFile import MotorController
+
 
 url = "http://192.168.44.117:8080/video"
 PORT = "COM5"
-BRate = 115200
+BRate = 9600
 MIN_SPEED = 100  # Minimum motor speed (steps per second)
 MAX_SPEED = 800  # Maximum motor speed (steps per second)
 MAX_COUNT = 100  # Maximum expected object count
@@ -24,15 +25,26 @@ scaleFactor = 2
 WidthOfConveyor = 1080
 LengthOfConveyor = 1080
 
-cap = cv.VideoCapture(1)
+print("Camera Setup Started")
+
+cap = cv.VideoCapture(0,cv.CAP_DSHOW)
 cap.set(cv.CAP_PROP_FRAME_WIDTH, 1920)
-cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1080)
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1200)
+
+print("Camera Setup Initialized")
+
+
+#arduino intialization
+print("Controller Setup Initialized")
+motor_controller = MotorController(PORT, BRate)
+
 
 #best.pt model of yolov8n (nano)
+print("Waiting to connect Model....")
 modelPath = "runs/detect/train3/weights/best.pt"
 model = YOLO(modelPath)
-
-currentDirecotry = os.getcwd()
+print("Model Initialized....")
+# currentDirecotry = os.getcwd()
 
 counter = object_counter.ObjectCounter()
 coords = [topLeft,topRight, bottomRight, bottomLeft] = [(0,0), (1920,0), (1920,1080), (0,1080)]
@@ -45,9 +57,7 @@ lineCoords = [lx, ly, rx, ry]
 totalObjCounts = []
 
 # conveyor coordenates
-cx1, cy1, cx2, cy2 =[0, 0, 1920, 1080]
-
-
+cx1, cy1, cx2, cy2 =[140, 0, 850, 1200]
 
 
 def liesInsideTheBox(x1, y1, x2, y2,cx1, cy1, cx2, cy2):
@@ -61,13 +71,10 @@ def lerp(minSpeed, maxSpeed , speedFactor):
 
 classNames = ['typeOne', 'typeTwo', 'typeThree', 'typeFour']
 
-
-
-# Establish serial communication with Arduino
-connect = serial.Serial("COM5", 9600)
-time.sleep(2)
-
-previousSpeed = 300
+def getRangeSpeedOfMotor(speed):
+    lowVal = speed//100
+    midVal = lowVal*100 + (lowVal+1)*10
+    return midVal
 def calculate_speed(object_count, total_area):
     # Normalize the inputs
     normalized_count = object_count / MAX_COUNT
@@ -75,25 +82,16 @@ def calculate_speed(object_count, total_area):
 
     # Combine the factors with weights
     factor = (WEIGHT_COUNT * normalized_count + WEIGHT_AREA * normalized_area) / (WEIGHT_COUNT + WEIGHT_AREA)
-
+    print("Factor idk what it is, ", factor)
     # Calculate speed using linear interpolation
     speed = lerp(MIN_SPEED, MAX_SPEED, factor)
+    print("Speed in function ", speed)
+    speed = getRangeSpeedOfMotor(speed)
+    print("Speed after ranged ", speed)
     return int(speed)
 
-def sendSpeedToMotor(speed):
-    strSpeed = str(speed)
-    connect.write(strSpeed.encode('utf-8'))
-    print(f"Sent to Arduino: {strSpeed}")
-    # # Read the response from Arduino
-    # if connect.in_waiting > 0:  # Check if there is data available to read
-    #     val = connect.readline().decode('utf-8').strip()  # Read a complete line
-    #     print(f"Value from Arduino: {val}")
 
 
-def getRangeSpeedOfMotor(speed):
-    lowVal = speed//100
-    midVal = lowVal*100 + (lowVal+1)*10
-    return midVal
 
 while True:
     ret, img = cap.read()
@@ -103,7 +101,7 @@ while True:
     img = cv.flip(img, 1)
     frame = img
 
-    results = model.predict(source=frame,stream=True, conf=0.01)
+    results = model.predict(source=frame,stream=True, conf=0.035)
 
     totalArea = 0
 
@@ -136,7 +134,7 @@ while True:
                 cvzone.putTextRect(frame, f'{area} cm2',posOfAreaText, scale=2, thickness=1, offset=5)
                 detections = np.vstack([detections, currentArray])
 
-    cvzone.putTextRect(frame, f'{totalArea} cm2', (0,50), scale=2, thickness=1, offset=5)
+    cvzone.putTextRect(frame, f'Area {totalArea} cm2', (0,50), scale=2, thickness=1, offset=5)
 
 
 
@@ -158,14 +156,16 @@ while True:
     #object counts crosed that line
     countedObjects = len(totalObjCounts)
     speedOfMotor = calculate_speed(countedObjects, totalArea)
-
+    # print("Speed of Motor currently is, ", speedOfMotor)
     if speedOfMotor:
-        rangedSpeed = getRangeSpeedOfMotor(speedOfMotor)
-        sendSpeedToMotor(rangedSpeed*sFactor)
-    else:
-        sendSpeedToMotor(500)
+        motor_controller.set_speed(speedOfMotor * sFactor, min_delay=5)
 
-    cvzone.putTextRect(frame, f'#of {countedObjects}',(350,50), scale=1)
+    else:
+        motor_controller.set_speed(500, min_delay=5)
+
+
+    cvzone.putTextRect(frame, f'#of {countedObjects}',(300,50), scale=2)
+    cvzone.putTextRect(frame, f'speed of motor  {speedOfMotor}', (400, 50), scale=2)
 
     cv.imshow("Results", frame)
     if cv.waitKey(1) & 0xFF == ord('q'):
