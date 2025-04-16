@@ -8,6 +8,7 @@ import numpy as np
 from time import time
 from speedController import SpeedController
 from arduinoFile import MotorController
+from shared_data import data_store
 
 # Configuration
 PORT = "COM5"
@@ -99,8 +100,14 @@ def main():
         counted_objects = len(total_obj_counts)
         speed_updated = speed_controller.update_speed(counted_objects, total_area)
 
+        # print(f"Sent: {speed_updated}")
+        current_speed = speed_controller.get_current_speed()
+        # print(f"Sent: {current_speed}, {counted_objects}, {total_area}")
+        data_store.queue.put((current_speed, counted_objects, total_area))
+        # print("Size of queue", data_store.queue.qsize())
+        # print(data_store.get_dataframe())
         if speed_updated:
-            motor_controller.set_speed(speed_controller.get_current_speed() * SPEED_FACTOR)
+            motor_controller.set_speed(current_speed * SPEED_FACTOR)
 
         # Display info
         cvzone.putTextRect(frame, f'Area: {total_area} cm2', (0, 50), scale=2, thickness=1, offset=5)
