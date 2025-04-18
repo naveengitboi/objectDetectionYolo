@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap');
+
+*{
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: "Sora", sans-serif;
+    color: var(--least-color);
+}
+
+:root{
+    --main-size: 1.15rem;
+    --primary-color: #EFFFFB;
+    --secondary-color: #50D890;
+    --ter-color:#4F98CA;
+    --least-color:#272727;
+    --grayish-color:#3F4F44;
+}
+
+body
+{
+    padding: 0.5rem;
+    background-color: var(--primary-color);
+}
+.lContent
+{
+    font-size: 1.85rem;
+
+}
+
+button
+{
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 0.85rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: var(--main-size);
+}
+
+.successBtn
+{
+    background-color: var(--secondary-color);
+}
+.grayBtn
+{
+    background-color: var(--grayish-color);
+    color: var(--primary-color);
+}
+.navbar
+{
+    padding: 0.5rem 1.85rem;
+    border: 2px solid red;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.graphBar
+{
+    display: grid;
+    grid-template-columns: 3fr 2fr 1fr;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem 0;
+    gap: 1rem;
+}

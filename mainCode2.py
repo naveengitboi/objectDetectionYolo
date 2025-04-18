@@ -183,12 +183,12 @@ def main():
             speed_updated = speed_controller.update_speed(counted_objects, total_area)
             current_speed = speed_controller.get_current_speed()
 
-            # Send to dashboard
-            send_to_dashboard(current_speed, counted_objects, total_area)
 
             # Control motor only if speed changed significantly
             if speed_updated:
                 motor_controller.set_speed(current_speed * CONFIG['motor']['speed_factor'])
+                # Send to dashboard
+                send_to_dashboard(current_speed, counted_objects, total_area)
 
             # Display UI metrics (on top of everything)
             show_metrics(frame, total_area, counted_objects, current_speed)
