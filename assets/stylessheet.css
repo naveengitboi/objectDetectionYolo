@@ -50,18 +50,33 @@ button
 .navbar
 {
     padding: 0.5rem 1.85rem;
-    border: 2px solid red;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+.navbarBtnsGrp
+{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.navbarBtnsGrp .fileDropDown
+{
+    padding: 1.5rem;
+    min-width: 300px;
+    margin-right: 1rem;
 }
 
 .graphBar
 {
     display: grid;
-    grid-template-columns: 3fr 2fr 1fr;
+    grid-template-columns: 2fr 2fr 1fr 1fr;
     justify-content: center;
     align-items: center;
     padding: 1rem 0;
     gap: 1rem;
+}
+.graphsContainer
+{
+    padding: 2rem;
 }
