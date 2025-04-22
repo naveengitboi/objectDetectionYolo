@@ -7,8 +7,6 @@ import pandas as pd
 import sqlite3 as db
 import datetime
 
-
-
 class DataBase:
     def __init__(self):
         self.connection = db.connect("databaseFile.db",check_same_thread=False )

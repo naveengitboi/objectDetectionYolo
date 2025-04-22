@@ -5,8 +5,8 @@ from sort import *
 import cvzone
 import numpy as np
 from datetime import datetime
-from speedController import SpeedController
-from arduinoFile import MotorController
+from motor_controller import DualMotorController
+from speedControllerDummy import DualMotorSpeedController
 import shared_data
 
 
@@ -43,26 +43,17 @@ CONFIG = {
 }
 
 
-def initialize_components():
-    print("🚀 Initializing components...")
-
-    # Camera
+def initialize_components(shared_controller, shared_speed_controller):
+    print("🚀 Initializing components for Motor 1...")
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CONFIG['camera']['width'])
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CONFIG['camera']['height'])
 
-    # Models
     model = YOLO(CONFIG['model']['path'])
     tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
 
-    # Hardware
-    motor_controller = MotorController(
-        CONFIG['motor']['port'],
-        CONFIG['motor']['baudrate']
-    )
-    speed_controller = SpeedController()
+    return cap, model, tracker, shared_controller, shared_speed_controller
 
-    return cap, model, tracker, motor_controller, speed_controller
 
 
 def draw_conveyor_boundaries(frame):
@@ -151,59 +142,46 @@ def show_metrics(frame, area, objects, speed):
                        scale=2, thickness=1, offset=5)
 
 
-def main():
-    cap, model, tracker, motor_controller, speed_controller = initialize_components()
+def motor_one_main(shared_controller, shared_speed_controller):
+    cap, model, tracker, motor_controller, speed_controller = initialize_components(shared_controller, shared_speed_controller)
     tracked_objects = []
 
     try:
         while True:
-            # Capture frame
             ret, frame = cap.read()
             if not ret:
-                print("❌ Camera disconnected")
+                print("❌ Camera disconnected for Motor 1")
                 break
 
             if CONFIG['camera']['flip']:
                 frame = cv2.flip(frame, 1)
 
-            # Draw conveyor boundaries FIRST (background)
             draw_conveyor_boundaries(frame)
-
-            # Process detections
             detections, total_area = process_frame(frame, model)
-
-            # Update tracker
             tracker_results = tracker.update(detections)
             update_object_counts(tracker_results, tracked_objects)
 
-            # Calculate metrics
             counted_objects = len(tracked_objects)
-            speed_updated = speed_controller.update_speed(counted_objects, total_area)
-            current_speed = speed_controller.get_current_speed()
+            speed_updated = speed_controller.update_motor1_speed(counted_objects, total_area)
+            current_speed = speed_controller.get_motor1_speed()
 
-
-            # Control motor only if speed changed significantly
             if speed_updated:
-                motor_controller.set_speed(current_speed)
-                # Send to dashboard
+                motor_controller.set_speeds(motor1_speed=current_speed)
                 send_to_dashboard(current_speed, counted_objects, total_area, 'seg_belt')
 
-            # Display UI metrics (on top of everything)
             show_metrics(frame, total_area, counted_objects, current_speed)
+            cv2.imshow("Conveyor Monitoring - Motor 1", frame)
 
-            # Show final frame
-            cv2.imshow("Conveyor Monitoring", frame)
-
-            # Exit on 'q'
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
     finally:
         cap.release()
         cv2.destroyAllWindows()
-        motor_controller.close()
-        print("✅ Resources cleaned up")
-
+        print("✅ Motor 1 resources cleaned up")
 
 if __name__ == "__main__":
-    main()
+    # When run standalone
+    controller = DualMotorController(CONFIG['motor']['port'], CONFIG['motor']['baudrate'])
+    speed_controller = DualMotorSpeedController()
+    motor_one_main(controller, speed_controller)
