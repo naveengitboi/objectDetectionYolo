@@ -6,10 +6,13 @@ import plotly.graph_objects as go
 import pandas as pd
 import sqlite3 as db
 import datetime
+from shared_data import DataStore
+
+
 
 class DataBase:
     def __init__(self):
-        self.connection = db.connect("databaseFile.db",check_same_thread=False )
+        self.connection = db.connect("data_file_2.db",check_same_thread=False )
         self.cur = self.connection.cursor()
 
     def getLastRow(self):
@@ -68,16 +71,15 @@ class DataBase:
         except ValueError:
             return None
 
-store = DataBase()
 
-data = store.getAllData()
-print(store.groupByData("Minute"))
+store = DataStore(make_table=False)
+data = store.get_all_data()
+print(store.group_by_data("Minute"))
 
 app = Dash(__name__)
 
 def getAllGraphs(graphsSelector,df, deltaXLabel):
     fig = go.Figure()
-
     for graph_name in graphsSelector:
         if graph_name.lower() == "area":
             fig.add_trace(
@@ -122,12 +124,26 @@ app.layout = html.Div(
 
             ], className="navbar"
         ),
+        html.Div([
+                html.P(["Last Added Load"], className="lContent"),
+                html.Div([
+                    html.P('Category One', className='miniContent'),
+                    html.H1('250', className="weightValue"),
+                ], className="load")
+                # dcc.Graph(id='load_bar_graph',
+                #               config={'displayModeBar': True},
+                #               style={'height': '400px'}),
+                ], className="loadContainer"),
         dcc.Interval(id='update_interval', interval=1000, n_intervals=0),
         html.Div([
-                    html.P(["Live Graph"], className="lContent"),
-                    dcc.Graph(id='live_graph_container',
+                html.P(["Live Graph Of Seg_Belt"], className="lContent"),
+                dcc.Graph(id='live_graph_seg_container',
                               config={'displayModeBar': True},
-                              style={'height': '400px'})
+                              style={'height': '400px'}),
+                html.P(["Live Graph Of Pickup_Belt"], className="lContent"),
+                dcc.Graph(id='live_graph_pickup_container',
+                          config={'displayModeBar': True},
+                      style={'height': '400px'}),
                 ], className="graphsContainer"),
         html.Div(
             children=[
@@ -150,17 +166,21 @@ app.layout = html.Div(
 )
 
 
-
 @app.callback(
-    Output("live_graph_container", "figure"),
+    Output("live_graph_seg_container", "figure"),
+        Output("live_graph_pickup_container", "figure"),
     Input('update_interval', 'n_intervals')
 )
 def update_live_graph(n_intervals):
     startDate = endDate = None
-    df = store.getSelectedData(startDate, endDate)
-    graphsOptions = ['Speed', 'Area', 'Objects']
-    fig = getAllGraphs(graphsOptions, df, False)
-    return fig
+    seg_belt_df = store.get_selected_data(startDate, endDate, 'seg_belt')
+    pickup_belt_df = store.get_selected_data(startDate, endDate, 'pickup_belt')
+    print("updated",n_intervals)
+    seg_belt_graph_options = ['Speed', 'Area', 'Objects']
+    pickup_belt_graph_options = ['Speed', 'Area', 'Objects']
+    seg_fig = getAllGraphs(seg_belt_graph_options, seg_belt_df, False)
+    pickup_fig = getAllGraphs(pickup_belt_graph_options, pickup_belt_df, False )
+    return seg_fig, pickup_fig
 
 @app.callback(
     Output('graph_container', 'figure'),
@@ -172,10 +192,10 @@ def update_live_graph(n_intervals):
 )
 
 def update_graph(click, graphsSelector, startDate, endDate, grpBy):
-    df = store.getSelectedData(startDate, endDate)
+    df = store.get_selected_data(startDate, endDate)
     deltaXLabel = False
     if grpBy:
-        df = store.groupByData(grpBy)
+        df = store.group_by_data(grpBy)
     fig = getAllGraphs(graphsSelector, df, deltaXLabel)
     return fig
 
@@ -189,7 +209,7 @@ Output('download_data_frame', 'data'),
 
 def download_data(downloadClick,formatOption):
     currDate = datetime.date.today()
-    df = store.getAllData()
+    df = store.get_all_data()
     if formatOption == 'csv':
         return dcc.send_data_frame(df.to_csv, f"data_downloaded_{currDate}.csv")
     elif formatOption == 'Excel':

@@ -5,7 +5,7 @@ from sort import *
 import cvzone
 import numpy as np
 from datetime import datetime
-from motor_controller import DualMotorController
+from motor_controller_old import DualMotorController
 from speedControllerDummy import DualMotorSpeedController
 import shared_data
 
@@ -45,9 +45,24 @@ CONFIG = {
 
 def initialize_components(shared_controller, shared_speed_controller):
     print("🚀 Initializing components for Motor 1...")
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CONFIG['camera']['width'])
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CONFIG['camera']['height'])
+    try:
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+        # Add these properties for better stability
+        cap.set(cv2.CAP_PROP_FPS, 30)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+        cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+
+        # Verify camera opened
+        if not cap.isOpened():
+            raise RuntimeError("Cannot open camera")
+
+    except Exception as e:
+        print(f"❌ Camera initialization failed: {str(e)}")
+        raise
 
     model = YOLO(CONFIG['model']['path'])
     tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
@@ -143,11 +158,20 @@ def show_metrics(frame, area, objects, speed):
 
 
 def motor_one_main(shared_controller, shared_speed_controller):
-    cap, model, tracker, motor_controller, speed_controller = initialize_components(shared_controller, shared_speed_controller)
+    cap = None
+    motor_controller = None
     tracked_objects = []
 
+
+
     try:
+        cap, model, tracker, motor_controller, speed_controller = initialize_components(shared_controller,
+                                                                                        shared_speed_controller)
+        # Create named window in the main thread
+        # cv2.namedWindow("Conveyor Monitoring - Motor 1", cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow("Conveyor Monitoring - Motor 1", 800, 600)
         while True:
+            # Read frame with timeout
             ret, frame = cap.read()
             if not ret:
                 print("❌ Camera disconnected for Motor 1")
@@ -170,15 +194,28 @@ def motor_one_main(shared_controller, shared_speed_controller):
                 send_to_dashboard(current_speed, counted_objects, total_area, 'seg_belt')
 
             show_metrics(frame, total_area, counted_objects, current_speed)
+            # Display the frame
             cv2.imshow("Conveyor Monitoring - Motor 1", frame)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            # Use waitKey with proper timing (1ms)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
                 break
+            elif key == ord(' '):  # Example of additional controls
+                print("Paused - press any key to continue")
+                cv2.waitKey(0)
 
+
+    except Exception as e:
+        print(f"❌ Error in main loop: {str(e)}")
     finally:
-        cap.release()
+        # Proper cleanup order
+        if cap is not None:
+            cap.release()
+        if motor_controller is not None:
+            motor_controller.close()
         cv2.destroyAllWindows()
-        print("✅ Motor 1 resources cleaned up")
+        print("✅ All resources released properly")
 
 if __name__ == "__main__":
     # When run standalone

@@ -15,17 +15,21 @@
     --ter-color:#4F98CA;
     --least-color:#272727;
     --grayish-color:#3F4F44;
+    --common-padding: 2rem;
 }
 
 body
 {
-    padding: 0.5rem;
+    padding: var(--common-padding);
     background-color: var(--primary-color);
 }
 .lContent
 {
     font-size: 1.85rem;
-
+}
+.miniContent
+{
+    font-size: 0.8rem;
 }
 
 button
@@ -65,6 +69,45 @@ button
     padding: 1.5rem;
     min-width: 300px;
     margin-right: 1rem;
+}
+.loadContainer
+{
+    padding:1rem 2rem;
+    border: 2px solid red;
+}
+.loadContainer .lContent
+{
+    padding:0.85rem 0;
+}
+.load
+{
+    background-color: var(--secondary-color);
+    width: 300px;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+.load .miniContent
+{
+    padding: 0.85rem;
+}
+.weightValue
+{
+    position: relative;
+    font-size: 3rem;
+}
+.weightValue::after
+{
+    content: "gms";
+    position: absolute;
+    top: 0;
+    right: -50%;
+    font-weight: 500;
+    font-size: 0.85rem;
+    font-style: italic;
 }
 
 .graphBar

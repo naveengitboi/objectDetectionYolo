@@ -29,7 +29,9 @@ class DualMotorSpeedController:
             'MIN_CHANGE_DELAY': 5,
             'SMOOTHING_WINDOW': 3,
             'MAX_STEPS': 4,
-            'MIN_STEPS': 0
+            'MIN_STEPS': 0,
+            'MAX_COUNT': 20,
+            'MAX_AREA': 200,
         }
 
     def _normalize(self, value, max_value):
@@ -43,13 +45,12 @@ class DualMotorSpeedController:
         return int(self.motor1['MIN_SPEED'] + speed_factor *
                    (self.motor1['MAX_SPEED'] - self.motor1['MIN_SPEED']))
 
-    def _calculate_motor2_speed(self, stepStatus):
-        num_steps = sum(stepStatus)
+    def _calculate_motor2_speed(self, area):
         max_speed = self.motor2['MAX_SPEED']
         min_speed = self.motor2['MIN_SPEED']
-        return max_speed - (max_speed - min_speed) * (
-                (self.motor2['MAX_STEPS'] - num_steps) /
-                (self.motor2['MAX_STEPS'] - self.motor2['MIN_STEPS']))
+        return (max_speed - min_speed) * (
+                (self.motor2['MAX_AREA'] - area) /
+                (self.motor2['MAX_AREA'] - 0))
 
     def _apply_smoothing(self, motor, target_speed):
         motor['speed_history'].append(target_speed)
@@ -75,8 +76,8 @@ class DualMotorSpeedController:
             return True
         return False
 
-    def update_motor2_speed(self, stepStatus):
-        target_speed = self._calculate_motor2_speed(stepStatus)
+    def update_motor2_speed(self, total_area_detection):
+        target_speed = self._calculate_motor2_speed(total_area_detection)
         smoothed_speed = self._apply_smoothing(self.motor2, target_speed)
 
         if self._should_update_speed(self.motor2, smoothed_speed):

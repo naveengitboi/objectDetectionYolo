@@ -25,6 +25,7 @@ def camPreview(previewName, camID):
         cv2.imshow(previewName, frame)
         rval, frame = cam.read()
         key = cv2.waitKey(20)
+
         if key == 27:  # exit on ESC
             break
     cv2.destroyWindow(previewName)
