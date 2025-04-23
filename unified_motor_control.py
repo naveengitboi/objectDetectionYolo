@@ -82,6 +82,14 @@ class UnifiedMotorSystem:
         # Motor 2 specific states
         self.belt_active = False
         self.movement_end_time = 0
+        self.is_motor2_speed_changed = CONFIG['cameras'][1]['min_speed']
+
+        # Add these for load cell handling
+        self.last_valid_load = None
+        self.load_stable_count = 0
+        self.load_stable_threshold = 3  # Number of consistent readings needed
+        self.last_load_send_time = 0
+        self.load_send_interval = 5  # Minimum seconds between sends
 
     def initialize_cameras(self):
         """Initialize all cameras with error handling"""
@@ -184,12 +192,42 @@ class UnifiedMotorSystem:
                 current_motor1_speed = self.controller.motor_speeds['motor1']
                 self.controller.set_motor_speeds(current_motor1_speed, current_speed * CONFIG['motor']['speed_factor'])
                 print(f"Waste detected! Moving belt for {movement_time:.2f} seconds at {current_speed}")
+        if self.is_motor2_speed_changed != current_speed:
             self.send_to_dashboard(current_speed, 0, total_area, cam_cfg['name'])
-
+            self.is_motor2_speed_changed = current_speed
         # Show metrics
         self.show_metrics(frame, total_area, current_speed, self.belt_active, cam_cfg['name'])
 
         return frame
+
+    def check_load_cell_value(self):
+        current_load = self.controller.get_load_cell_value()
+        current_time = time.time()
+
+        # Skip if not enough time passed since last send
+        if (current_time - self.last_load_send_time) < self.load_send_interval:
+            return
+
+        # Check if load is valid (example validation - adjust as needed)
+        if current_load < -100 or current_load > 1000:  # Example range
+            print(f"Invalid load reading: {current_load}")
+            return
+
+        # Check if load is stable (similar to previous readings)
+        if self.last_valid_load is not None:
+            if abs(current_load - self.last_valid_load) < 2.0:  # Within 2 units
+                self.load_stable_count += 1
+            else:
+                self.load_stable_count = 0
+
+        # Update last valid load
+        self.last_valid_load = current_load
+
+        # Only send if reading is stable
+        if self.load_stable_count >= self.load_stable_threshold:
+            self.send_load_to_dashboard(current_load)
+            self.last_load_send_time = current_time
+            self.load_stable_count = 0
 
     def draw_conveyor_boundaries(self, frame, cam_cfg):
         """Draw conveyor boundaries for the specified camera"""
@@ -284,6 +322,12 @@ class UnifiedMotorSystem:
     def send_to_dashboard(self, speed, objects, area, motor_class):
         """Send data to dashboard"""
         data_store.add_data(speed, objects, area, motor_class)
+
+    def send_load_to_dashboard(self, load_value):
+        """Send load data to dashboard"""
+        data_store.add_load_data(load_value, "load_cell")
+        print(f"Sent load to dashboard: {load_value:.2f}")
+
 
     def run(self):
         """Main processing loop"""

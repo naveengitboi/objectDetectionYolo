@@ -3,73 +3,8 @@ from dash import Dash, html, dcc, Output, Input, State, ctx
 import plotly.express as px
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-import pandas as pd
-import sqlite3 as db
 import datetime
 from shared_data import DataStore
-
-
-
-class DataBase:
-    def __init__(self):
-        self.connection = db.connect("data_file_2.db",check_same_thread=False )
-        self.cur = self.connection.cursor()
-
-    def getLastRow(self):
-        return pd.read_sql_query("SELECT * FROM storeHouse ORDER BY time_stamp DESC LIMIT ?", con=self.connection, params=[1])
-    def getAllData(self):
-        return pd.read_sql_query("SELECT * FROM storeHouse ORDER BY time_stamp DESC", con=self.connection)
-    def close(self):
-        self.connection.commit()
-        self.connection.close()
-    def getSelectedData(self, startDate, endDate):
-        start_date = self._parse_date(startDate) or datetime.date.today()
-        end_date = self._parse_date(endDate) or datetime.date.today()
-
-        # Format dates for SQL query
-        start_str = start_date.strftime('%Y-%m-%d 00:00:00')
-        end_str = end_date.strftime('%Y-%m-%d 23:59:59')
-
-        query = """
-                    SELECT * 
-                    FROM storeHouse 
-                    WHERE time_stamp >= ? AND time_stamp <= ?
-                """
-        return pd.read_sql_query(query, con=self.connection, params=[start_str, end_str])
-
-    def groupByData(self, grpBy):
-        group_expr = {
-            'Day': "DATE(time_stamp)",
-            'Month': "STRFTIME('%Y-%m', time_stamp)",
-            'Week': "STRFTIME('%Y-W%W', time_stamp)",
-            'Year': "STRFTIME('%Y', time_stamp)",
-            'Hour': "STRFTIME('%Y-%m-%d %H:00', time_stamp)",
-            'Minute': "STRFTIME('%Y-%m-%d %H:%M', time_stamp)"
-        }.get(grpBy)
-
-        if not group_expr:
-            raise ValueError("Invalid grouping period")
-
-        query = f"""
-            SELECT
-                *,
-                {group_expr} as time_period,
-                AVG(speed) as avgSpeed,
-                COUNT(*) as record_count
-            FROM storeHouse
-            GROUP BY time_period
-            ORDER BY time_period
-            """
-        return pd.read_sql_query(query, self.connection)
-
-    def _parse_date(self, date_str):
-        """Helper method to parse date strings into date objects."""
-        if not date_str:
-            return None
-        try:
-            return datetime.datetime.strptime(str(date_str), "%Y-%m-%d").date()
-        except ValueError:
-            return None
 
 
 store = DataStore(make_table=False)
@@ -117,7 +52,7 @@ app.layout = html.Div(
             children=[
                 html.H3(children="Dashboard", className="lContent"),
                 html.Div(children=[
-                    dcc.Dropdown(options=["csv", "sql db", "Excel"], value="csv", id="file_format", className="fileDropDown"),
+                    dcc.Dropdown(options=["csv", "Excel"], value="csv", id="file_format", className="fileDropDown"),
                     html.Button(children="Download Full Data", n_clicks=0, className="successBtn", id="download_data_btn"),
                     dcc.Download(id="download_data_frame")
                 ], className="navbarBtnsGrp"),
@@ -128,7 +63,7 @@ app.layout = html.Div(
                 html.P(["Last Added Load"], className="lContent"),
                 html.Div([
                     html.P('Category One', className='miniContent'),
-                    html.H1('250', className="weightValue"),
+                    html.H1('250', className="weightValue", id="load_status"),
                 ], className="load")
                 # dcc.Graph(id='load_bar_graph',
                 #               config={'displayModeBar': True},
@@ -169,6 +104,7 @@ app.layout = html.Div(
 @app.callback(
     Output("live_graph_seg_container", "figure"),
         Output("live_graph_pickup_container", "figure"),
+        Output("load_status", 'children'),
     Input('update_interval', 'n_intervals')
 )
 def update_live_graph(n_intervals):
@@ -180,7 +116,8 @@ def update_live_graph(n_intervals):
     pickup_belt_graph_options = ['Speed', 'Area', 'Objects']
     seg_fig = getAllGraphs(seg_belt_graph_options, seg_belt_df, False)
     pickup_fig = getAllGraphs(pickup_belt_graph_options, pickup_belt_df, False )
-    return seg_fig, pickup_fig
+    last_load = store.get_last_load()
+    return seg_fig, pickup_fig, last_load
 
 @app.callback(
     Output('graph_container', 'figure'),

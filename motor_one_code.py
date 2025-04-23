@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 from motor_controller_old import DualMotorController
 from speedControllerDummy import DualMotorSpeedController
-import shared_data
+import shared_data_old
 
 
 data_store = shared_data.DataStore()

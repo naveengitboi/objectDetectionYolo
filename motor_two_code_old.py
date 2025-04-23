@@ -7,7 +7,7 @@ import numpy as np
 from motor_controller_old import DualMotorController
 from speedControllerDummy import DualMotorSpeedController
 from motor_one_code import CONFIG, draw_conveyor_boundaries, process_frame
-import shared_data
+import shared_data_old
 
 
 data_store = shared_data.DataStore()

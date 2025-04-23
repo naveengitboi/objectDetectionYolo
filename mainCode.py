@@ -8,7 +8,7 @@ import numpy as np
 from time import time
 from speedController import SpeedController
 from arduinoFile import MotorController
-from shared_data import data_store
+from shared_data_old import data_store
 
 # Configuration
 PORT = "COM5"

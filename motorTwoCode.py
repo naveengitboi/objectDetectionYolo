@@ -7,7 +7,7 @@ import numpy as np
 from speedController import SpeedController
 from arduinoFile import MotorController
 from mainCode2 import CONFIG, draw_conveyor_boundaries, process_frame
-import shared_data
+import shared_data_old
 
 
 data_store = shared_data.DataStore()

@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 from speedController import SpeedController
 from arduinoFile import MotorController
-import shared_data
+import shared_data_old
 
 
 data_store = shared_data.DataStore()
