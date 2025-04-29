@@ -73,6 +73,9 @@ button
 .loadContainer
 {
     padding:1rem 2rem;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
 }
 .loadContainer .lContent
 {
@@ -100,7 +103,7 @@ button
 }
 .weightValue::after
 {
-    content: "gms";
+    content: "";
     position: absolute;
     top: 0;
     right: -50%;
@@ -108,7 +111,6 @@ button
     font-size: 0.85rem;
     font-style: italic;
 }
-
 .graphBar
 {
     display: grid;

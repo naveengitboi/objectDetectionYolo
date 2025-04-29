@@ -60,14 +60,19 @@ app.layout = html.Div(
             ], className="navbar"
         ),
         html.Div([
-                html.P(["Last Added Load"], className="lContent"),
                 html.Div([
-                    html.P('Category One', className='miniContent'),
+                    # html.P(["Last Added Load"], className="lContent"),
+                    html.P('Last Added Load, Category One(gms)', className='miniContent'),
                     html.H1('250', className="weightValue", id="load_status"),
+                ], className="load"),
+                html.Div([
+                    html.P('Motor One(steps/s)', className='miniContent'),
+                    html.H1('250', className="weightValue", id="motor_1_speed"),
+                ], className="load"),
+                html.Div([
+                    html.P('Motor Two(steps/s)', className='miniContent'),
+                    html.H1('250', className="weightValue", id="motor_2_speed"),
                 ], className="load")
-                # dcc.Graph(id='load_bar_graph',
-                #               config={'displayModeBar': True},
-                #               style={'height': '400px'}),
                 ], className="loadContainer"),
         dcc.Interval(id='update_interval', interval=1000, n_intervals=0),
         html.Div([
@@ -105,6 +110,8 @@ app.layout = html.Div(
     Output("live_graph_seg_container", "figure"),
         Output("live_graph_pickup_container", "figure"),
         Output("load_status", 'children'),
+        Output("motor_1_speed", 'children'),
+        Output("motor_2_speed", 'children'),
     Input('update_interval', 'n_intervals')
 )
 def update_live_graph(n_intervals):
@@ -117,7 +124,13 @@ def update_live_graph(n_intervals):
     seg_fig = getAllGraphs(seg_belt_graph_options, seg_belt_df, False)
     pickup_fig = getAllGraphs(pickup_belt_graph_options, pickup_belt_df, False )
     last_load = store.get_last_load()
-    return seg_fig, pickup_fig, last_load
+    last_speed_motor_one = store.get_last_row('seg_belt')['speed']
+    last_speed_motor_two = store.get_last_row('pickup_belt')['speed']
+    print("last load",last_speed_motor_one, last_speed_motor_two)
+    last_load_value = 250
+    if(last_load.size != 0):
+        last_load_value = last_load['weight']
+    return seg_fig, pickup_fig, last_load_value, last_speed_motor_one, last_speed_motor_two
 
 @app.callback(
     Output('graph_container', 'figure'),

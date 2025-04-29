@@ -7,8 +7,7 @@ class DataStore:
     def __init__(self, make_table=True):
         self.connection = db.connect("data_file_2.db", check_same_thread=False)
         self.cur = self.connection.cursor()
-        if make_table:
-            self.createTables()  # Changed from createTable to createTables
+        self.createTables()  # Changed from createTable to createTables
 
     def createTables(self):
         """Create both tables if they don't exist"""
@@ -19,14 +18,14 @@ class DataStore:
             objects float,
             area float,
             motor_class varchar(50)
-        """)
+        );""")
 
         # New load data table
         self.cur.execute("""CREATE TABLE IF NOT EXISTS load_data(
             time_stamp datetime,
             load_type varchar(50),
             weight float,
-            status varchar(20) DEFAULT 'normal'
+            status varchar(20) DEFAULT 'normal');
         """)
 
         self.connection.commit()
@@ -39,25 +38,28 @@ class DataStore:
 
     def insertLoadData(self, load_type, weight, status="normal"):
         """Insert a new load measurement into the database"""
+        print("Load Inserted")
         curDate = datetime.datetime.now()
-        self.cur.execute("INSERT INTO load_data VALUES (?, ?, ?, ?)",
-                         (curDate, load_type, weight, status))
+        self.cur.execute(
+            """INSERT INTO load_data 
+               (time_stamp, load_type, weight) 
+               VALUES (?, ?, ?)""",
+            (curDate, load_type, weight))
         self.connection.commit()
 
     def add_data(self, speed, objects, area, motor_class):
         self.insertRow(speed, objects, area, motor_class)
 
     def add_load_data(self, load_type, weight, status="normal"):
-        """Add load data with optional status (normal/error/calibration)"""
         self.insertLoadData(load_type, weight, status)
 
-    def get_last_row(self):
-        return pd.read_sql_query("SELECT * FROM storeHouse ORDER BY time_stamp DESC LIMIT ?",
-                                 con=self.connection, params=[1])
+    def get_last_row(self, motor_type):
+        return pd.read_sql_query("SELECT speed FROM storeHouse WHERE motor_class LIKE ? ORDER BY time_stamp DESC LIMIT ?",
+                                 con=self.connection, params=[motor_type, 1])
 
     def get_last_load(self):
         """Get the most recent load measurement"""
-        return pd.read_sql_query("SELECT * FROM load_data ORDER BY time_stamp DESC LIMIT ?",
+        return pd.read_sql_query("SELECT weight FROM load_data ORDER BY time_stamp DESC LIMIT ?",
                                  con=self.connection, params=[1])
 
     def get_all_data(self, motor_type='seg_belt'):

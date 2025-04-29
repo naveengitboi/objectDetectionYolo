@@ -1,6 +1,7 @@
 import numpy as np
 from time import time
 
+global_max_speed = 300
 
 class DualMotorSpeedController:
     def __init__(self):
@@ -9,14 +10,14 @@ class DualMotorSpeedController:
             'last_speed_change': time(),
             'current_speed': 300,
             'speed_history': [],
-            'MIN_SPEED': 200,
-            'MAX_SPEED': 550,
-            'MIN_CHANGE_DELAY': 5,
-            'SMOOTHING_WINDOW': 3,
-            'MAX_COUNT': 20,
-            'MAX_AREA': 500,
-            'COUNT_WEIGHT': 0.3,
-            'AREA_WEIGHT': 0.7
+            'MIN_SPEED': 100,
+            'MAX_SPEED': 300,
+            'MIN_CHANGE_DELAY': 3,
+            'SMOOTHING_WINDOW': 1,
+            'MAX_COUNT': 5,
+            'MAX_AREA': 100,
+            'COUNT_WEIGHT': 0.5,
+            'AREA_WEIGHT': 0.8
         }
 
         # Motor 2 configuration (steps-based)
@@ -24,14 +25,14 @@ class DualMotorSpeedController:
             'last_speed_change': time(),
             'current_speed': 300,
             'speed_history': [],
-            'MIN_SPEED': 100,
-            'MAX_SPEED': 400,
-            'MIN_CHANGE_DELAY': 5,
-            'SMOOTHING_WINDOW': 3,
+            'MIN_SPEED': 80,
+            'MAX_SPEED': 250,
+            'MIN_CHANGE_DELAY': 3,
+            'SMOOTHING_WINDOW': 1,
             'MAX_STEPS': 4,
             'MIN_STEPS': 0,
-            'MAX_COUNT': 20,
-            'MAX_AREA': 200,
+            'MAX_COUNT': 5,
+            'MAX_AREA': 100,
         }
 
     def _normalize(self, value, max_value):
