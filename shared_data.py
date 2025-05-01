@@ -5,7 +5,7 @@ import sqlite3 as db
 
 class DataStore:
     def __init__(self, make_table=True):
-        self.connection = db.connect("data_file_2.db", check_same_thread=False)
+        self.connection = db.connect("data_file_4.db", check_same_thread=False)
         self.cur = self.connection.cursor()
         self.createTables()  # Changed from createTable to createTables
 

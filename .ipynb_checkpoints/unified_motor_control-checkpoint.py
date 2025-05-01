@@ -6,7 +6,7 @@ from sort import *
 import cvzone
 import numpy as np
 from motor_controller import ConveyorSystemController
-from speedControllerDummy import DualMotorSpeedController
+from speedController import DualMotorSpeedController
 import shared_data
 from threading import Lock
 
